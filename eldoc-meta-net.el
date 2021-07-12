@@ -7,7 +7,7 @@
 ;; Description: Eldoc support for meta-net
 ;; Keyword: eldoc c# dotnet sdk
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "24.3") (meta-net "1.1.0"))
 ;; URL: https://github.com/emacs-vs/eldoc-meta-net
 
 ;; This file is NOT part of GNU Emacs.
@@ -31,6 +31,9 @@
 ;;
 
 ;;; Code:
+
+(require 'eldoc)
+(require 'meta-net)
 
 (defgroup eldoc-meta-net nil
   "Eldoc support for meta-net."
