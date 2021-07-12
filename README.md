@@ -2,7 +2,7 @@
 ![CI](https://github.com/emacs-vs/eldoc-meta-net/workflows/CI/badge.svg)
 
 # eldoc-meta-net
-> 
+> Eldoc support for meta-net
 
 ## :floppy_disk: Quickstart
 
