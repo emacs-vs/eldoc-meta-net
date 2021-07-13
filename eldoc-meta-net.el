@@ -7,7 +7,7 @@
 ;; Description: Eldoc support for meta-net
 ;; Keyword: eldoc c# dotnet sdk
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "25.1") (meta-net "1.1.0") (ht "2.3"))
+;; Package-Requires: ((emacs "26.1") (meta-net "1.1.0") (ht "2.3"))
 ;; URL: https://github.com/emacs-vs/eldoc-meta-net
 
 ;; This file is NOT part of GNU Emacs.
@@ -235,7 +235,7 @@ We use this to eliminate not possible candidates."
     match))
 
 (defun eldoc-meta-net--grab-data (function-name)
-  "Return data that matches FUNCTION-NAME."
+  "Return data that match FUNCTION-NAME."
   (unless meta-net-csproj-current (meta-net-read-project))  ; read it
   (eldoc-meta-net--grab-namespaces)        ; first grab the data from `meta-net'
 
@@ -295,19 +295,21 @@ We use this to eliminate not possible candidates."
       (eldoc-meta-net-debug "Arg Bounds: %s" arg-bounds)
       (eldoc-meta-net-debug "Arg Count: k%s" arg-count)
       ;; Find match arguments count, for function overloading
-      (let ((index 0) (len (length methods)) data break
-            name info match-arg-count target)
-        (while (and (not break) (< index len))
+      (let ((index 0) (len (length methods)) data found
+            name info match-arg-count match-bounds)
+        (while (and (not found) (< index len))
           (setq data (nth index methods)
                 index (1+ index)
                 name (car data) info (cdr data)
                 match-arg-count 0)
+          (jcs-print "name" name)
           (with-temp-buffer
             (insert name)
             (goto-char (point-min))
             (when (search-forward "(" nil t)
               (forward-char -1)
-              (setq match-arg-count (length (eldoc-meta-net--arg-boundaries)))
+              (setq match-bounds (eldoc-meta-net--arg-boundaries)
+                    match-arg-count (length match-bounds))
               ;; Notice that function overloading can has same argument count
               ;; but with different type.
               ;;
@@ -323,13 +325,28 @@ We use this to eliminate not possible candidates."
               ;; Since we cannot know the type from the uesr, we just pick one
               ;; that matches.
               (when (= match-arg-count arg-count)
-                (setq target data  ; found
-                      break t))))
-          (jcs-print name)
-          (jcs-print (ht-get info 'summary))
-          (jcs-print "Match arg count: "match-arg-count))
-        name)
-      )))
+                (setq found t)))))
+
+        ;; Shoud we still display information if we cannot find the matching?
+        (when found
+          (with-temp-buffer
+            (delay-mode-hooks (funcall 'csharp-mode))
+            (ignore-errors (font-lock-ensure))
+            (insert name)
+            (let ((params (ht-get info 'params)) (param-index (1- (length match-bounds)))
+                  param param-name param-summary)
+              (dolist (bound (reverse match-bounds))  ; we replace from the back
+                (delete-region (car bound) (cdr bound))
+                (goto-char (car bound))
+                (setq param (nth param-index params)
+                      param-name (car param)
+                      param-summary (cdr param))
+                (when (= param-index arg-index)
+                  (setq param-name (propertize param-name 'face 'eldoc-highlight-function-argument)))
+                ;; Make sure we don't add a space infront of (
+                (insert (if (= param-index 0) "" " ") param-name)
+                (setq param-index (1- param-index))))
+            (buffer-string)))))))
 
 (defun eldoc-meta-net--turn-on ()
   "Start the `eldoc-meta-net' worker."
