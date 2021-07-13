@@ -46,6 +46,11 @@
   :group 'tool
   :link '(url-link :tag "Repository" "https://github.com/emacs-vs/eldoc-meta-net"))
 
+(defcustom eldoc-meta-net-display-summary nil
+  "If non-nil, display summary if valid."
+  :type 'boolean
+  :group 'eldoc-meta-net)
+
 ;; These keywords are grab from `csharp-mode'
 (defconst eldoc-meta-net--csharp-keywords
   (append
@@ -302,7 +307,6 @@ We use this to eliminate not possible candidates."
                 index (1+ index)
                 name (car data) info (cdr data)
                 match-arg-count 0)
-          (jcs-print "name" name)
           (with-temp-buffer
             (insert name)
             (goto-char (point-min))
@@ -327,26 +331,28 @@ We use this to eliminate not possible candidates."
               (when (= match-arg-count arg-count)
                 (setq found t)))))
 
-        ;; Shoud we still display information if we cannot find the matching?
-        (when found
-          (with-temp-buffer
-            (delay-mode-hooks (funcall 'csharp-mode))
-            (ignore-errors (font-lock-ensure))
-            (insert name)
-            (let ((params (ht-get info 'params)) (param-index (1- (length match-bounds)))
-                  param param-name param-summary)
-              (dolist (bound (reverse match-bounds))  ; we replace from the back
-                (delete-region (car bound) (cdr bound))
-                (goto-char (car bound))
-                (setq param (nth param-index params)
-                      param-name (car param)
-                      param-summary (cdr param))
-                (when (= param-index arg-index)
-                  (setq param-name (propertize param-name 'face 'eldoc-highlight-function-argument)))
-                ;; Make sure we don't add a space infront of (
-                (insert (if (= param-index 0) "" " ") param-name)
-                (setq param-index (1- param-index))))
-            (buffer-string)))))))
+        ;; Start display buffer
+        (with-temp-buffer
+          (delay-mode-hooks (funcall 'csharp-mode))
+          (ignore-errors (font-lock-ensure))
+          (insert name)
+          (let ((params (ht-get info 'params)) (param-index (1- (length match-bounds)))
+                param param-name param-summary)
+            (dolist (bound (reverse match-bounds))  ; we replace from the back
+              (delete-region (car bound) (cdr bound))
+              (goto-char (car bound))
+              (setq param (nth param-index params)
+                    param-name (car param))
+              (when (= param-index arg-index)
+                (setq param-summary (cdr param)  ; later insert target param summary
+                      param-name (propertize param-name 'face 'eldoc-highlight-function-argument)))
+              ;; Make sure we don't add a space infront of (
+              (insert (if (= param-index 0) "" " ") param-name)
+              (setq param-index (1- param-index)))
+            (goto-char (point-max))
+            (when (and eldoc-meta-net-display-summary param-summary)
+              (insert "\n\n" param-summary)))
+          (buffer-string))))))
 
 (defun eldoc-meta-net--turn-on ()
   "Start the `eldoc-meta-net' worker."
