@@ -4,7 +4,7 @@
 # eldoc-meta-net
 > Eldoc support for meta-net
 
-<img src="./etc/demo.png"/>
+<img src="./etc/demo.png" width="543" height="279" />
 
 ## :floppy_disk: Quickstart
 
