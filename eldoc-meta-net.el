@@ -32,6 +32,7 @@
 
 ;;; Code:
 
+(require 'pcase)
 (require 'subr-x)
 
 (require 'eldoc)
@@ -88,55 +89,86 @@ This function also ignore generic type between < and >."
         (setq result start)))
     (goto-char result)))
 
-(defun eldoc-meta-net--function-at-point ()
+(defun eldoc-meta-net--function-name ()
   "Return the function name at point."
   (let* ((right 0) (left 0))
     (while (and (<= left right) (re-search-backward "\\((\\|)\\)" nil t))
-      (if (equal (buffer-substring-no-properties (point) (+ (point) 1)) "(")
+      (if (equal (buffer-substring (point) (+ (point) 1)) "(")
           (setq left (+ left 1))
         (setq right (+ right 1))))
-    (while (equal (buffer-substring-no-properties (- (point) 1) (point)) " ")
+    (while (equal (buffer-substring (- (point) 1) (point)) " ")
       (goto-char (- (point) 1))))
-  (eldoc-meta-net--possible-function-point)
-  (unless (eldoc-meta-net--inside-comment-p) (thing-at-point 'symbol)))
+  (save-excursion
+    (eldoc-meta-net--possible-function-point)
+    (unless (eldoc-meta-net--inside-comment-p) (thing-at-point 'symbol))))
 
 (defun eldoc-meta-net--arg-string ()
   "Return argument string."
-  (when (search-forward "(" nil t)
-    (forward-char -1)
-    (let ((beg (point)) arg-string)
-      (forward-sexp 1)
-      (setq arg-string (buffer-substring-no-properties beg (point)))
-      ;; Here we remove everything inside nested arguments
-      ;;
-      ;; For example,
-      ;;
-      ;;   Add(a, b, (x, y, z) => {  }, c)
-      ;;
-      ;; should return,
-      ;;
-      ;;   (a, b, => {  }, c)
-      ;;
-      ;; Of course, if you are inside the x y z scope then it would just
-      ;; return (x, y, z). This is fine since ElDoc should just only need
-      ;; to know the first layer's function.
-      (with-temp-buffer
-        (insert arg-string)
-        (goto-char (1+ (point-min)))
-        (while (search-forward "(" nil t)
-          (forward-char -1)
-          (let ((start (point)))
-            (forward-sexp 1)
-            (delete-region start (point))))
-        (buffer-string)))))
+  (save-excursion
+    (when (search-forward "(" nil t)
+      (forward-char -1)
+      (let ((beg (point)) arg-string)
+        (forward-sexp 1)
+        (setq arg-string (buffer-substring beg (point)))
+        ;; Here we remove everything inside nested arguments
+        ;;
+        ;; For example,
+        ;;
+        ;;   Add(a, b, (x, y, z) => {  }, c)
+        ;;
+        ;; should return,
+        ;;
+        ;;   (a, b, => , c)
+        ;;
+        ;; Of course, if you are inside the x y z scope then it would just
+        ;; return (x, y, z). This is fine since ElDoc should just only need
+        ;; to know the first layer's function.
+        (with-temp-buffer
+          (insert arg-string)
+          (goto-char (1+ (point-min)))
+          (while (re-search-forward "[({]" nil t)
+            (forward-char -1)
+            (let ((start (point)))
+              (forward-sexp 1)
+              (delete-region start (point))))
+          (buffer-string))))))
+
+(defun eldoc-meta-net--arg-boundaries ()
+  "Return a list of cons cell represent arguments' boundaries.
+
+The start boundary should either behind of `(` or `,`; the end boundary should
+either infront of `,` or `)`.
+
+For example, (^ is start; $ is end)
+
+    Add(var1, var2, var3)
+        ^  $ ^   $ ^    $
+
+This function also get called infront of the opening curly bracket.  See
+function `eldoc-meta-net--possible-function-point' for the graph."
+  (let (boundaries start (max-pt (save-excursion (forward-sexp 1))))
+    (save-excursion
+      (forward-char 1)
+      (setq start (point))
+      (while (re-search-forward "[,{()]" max-pt t)
+        (pcase (string (char-before))
+          ((or "," ")")
+           (push (cons start (1- (point))) boundaries)
+           (setq start (point)))
+          ((or "{" "(") (forward-char -1) (forward-sexp 1)))))
+    (reverse boundaries)))
 
 (defun eldoc-meta-net-function ()
   "Main eldoc entry."
   (save-excursion
-    (when-let ((function-name (eldoc-meta-net--function-at-point))
-               (arg-string (eldoc-meta-net--arg-string)))
+    (when-let* ((function-name (eldoc-meta-net--function-name))
+                (arg-string (eldoc-meta-net--arg-string))
+                (arg-bounds (eldoc-meta-net--arg-boundaries))  ; list of cons cell
+                (arg-count (length arg-bounds)))
       (jcs-print function-name)
       (jcs-print arg-string)
+      (jcs-print arg-bounds)
+      (jcs-print arg-count)
       )))
 
 (defun eldoc-meta-net--turn-on ()
