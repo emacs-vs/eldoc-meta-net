@@ -6,7 +6,17 @@
 
 ## :floppy_disk: Quickstart
 
-N/A
+```el
+(use-package company-meta-net
+  :ensure t
+  :hook (csharp-mode . (lambda () (eldoc-meta-net-enable))))
+```
+
+## :hammer: Configurations
+
+#### `eldoc-meta-net-display-summary`
+
+Display parameter's summary under ElDoc.
 
 ## Contribution
 
