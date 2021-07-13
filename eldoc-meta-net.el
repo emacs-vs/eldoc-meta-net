@@ -7,7 +7,7 @@
 ;; Description: Eldoc support for meta-net
 ;; Keyword: eldoc c# dotnet sdk
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "24.3") (meta-net "1.1.0"))
+;; Package-Requires: ((emacs "25.1") (meta-net "1.1.0"))
 ;; URL: https://github.com/emacs-vs/eldoc-meta-net
 
 ;; This file is NOT part of GNU Emacs.
@@ -32,6 +32,8 @@
 
 ;;; Code:
 
+(require 'subr-x)
+
 (require 'eldoc)
 (require 'meta-net)
 
@@ -40,6 +42,122 @@
   :prefix "eldoc-meta-net-"
   :group 'tool
   :link '(url-link :tag "Repository" "https://github.com/emacs-vs/eldoc-meta-net"))
+
+;;
+;; (@* "Util" )
+;;
+
+(defun eldoc-meta-net--inside-comment-p ()
+  "Return non-nil if it's inside comment."
+  (nth 4 (syntax-ppss)))
+
+;;
+;; (@* "Core" )
+;;
+
+(defun eldoc-meta-net--possible-function-point ()
+  "This function get called infront of the opening curly bracket.
+
+For example,
+
+   SomeFunction<TypeA, TypeB>(a, b, c);
+                             ^
+
+This function also ignore generic type between < and >."
+  (let ((start (point))
+        (normal (save-excursion (forward-symbol -1) (point)))
+        (generic (save-excursion (search-backward ">" nil t)
+                                 (forward-char 1)
+                                 (forward-sexp -1)
+                                 (forward-symbol -1)
+                                 (point)))
+        result search-pt)
+    (when (<= generic (line-beginning-position))
+      (setq generic nil))
+    ;; Make sure the result is number to avoid error
+    (setq normal (or normal (point))
+          generic (or generic (point))
+          result (min normal generic))
+    (goto-char result)  ; here suppose to be the start of the function name
+    ;; We check to see if there is comma right behind the symbol
+    (save-excursion
+      (forward-symbol 1)
+      (setq search-pt (point))
+      (when (and (re-search-forward "[^,]*" nil t)
+                 (string-empty-p (string-trim (buffer-substring search-pt (point)))))
+        (setq result start)))
+    (goto-char result)))
+
+(defun eldoc-meta-net--function-at-point ()
+  "Return the function name at point."
+  (let* ((right 0) (left 0))
+    (while (and (<= left right) (re-search-backward "\\((\\|)\\)" nil t))
+      (if (equal (buffer-substring-no-properties (point) (+ (point) 1)) "(")
+          (setq left (+ left 1))
+        (setq right (+ right 1))))
+    (while (equal (buffer-substring-no-properties (- (point) 1) (point)) " ")
+      (goto-char (- (point) 1))))
+  (eldoc-meta-net--possible-function-point)
+  (unless (eldoc-meta-net--inside-comment-p) (thing-at-point 'symbol)))
+
+(defun eldoc-meta-net--arg-string ()
+  "Return argument string."
+  (when (search-forward "(" nil t)
+    (forward-char -1)
+    (let ((beg (point)) arg-string)
+      (forward-sexp 1)
+      (setq arg-string (buffer-substring-no-properties beg (point)))
+      ;; Here we remove everything inside nested arguments
+      ;;
+      ;; For example,
+      ;;
+      ;;   Add(a, b, (x, y, z) => {  }, c)
+      ;;
+      ;; should return,
+      ;;
+      ;;   (a, b, => {  }, c)
+      ;;
+      ;; Of course, if you are inside the x y z scope then it would just
+      ;; return (x, y, z). This is fine since ElDoc should just only need
+      ;; to know the first layer's function.
+      (with-temp-buffer
+        (insert arg-string)
+        (goto-char (1+ (point-min)))
+        (while (search-forward "(" nil t)
+          (forward-char -1)
+          (let ((start (point)))
+            (forward-sexp 1)
+            (delete-region start (point))))
+        (buffer-string)))))
+
+(defun eldoc-meta-net-function ()
+  "Main eldoc entry."
+  (save-excursion
+    (when-let ((function-name (eldoc-meta-net--function-at-point))
+               (arg-string (eldoc-meta-net--arg-string)))
+      (jcs-print function-name)
+      (jcs-print arg-string)
+      )))
+
+(defun eldoc-meta-net--turn-on ()
+  "Start the `eldoc-meta-net' worker."
+  (unless meta-net-csproj-current (meta-net-read-project))
+  (add-function :before-until (local 'eldoc-documentation-function) #'eldoc-meta-net-function)
+  (eldoc-mode 1))
+
+;;;###autoload
+(defun eldoc-meta-net-enable ()
+  "Turn on `eldoc-meta-net'."
+  (interactive)
+  (add-hook 'csharp-mode-hook #'eldoc-meta-net--turn-on)
+  (add-hook 'csharp-tree-sitter-mode #'eldoc-meta-net--turn-on))
+
+;;;###autoload
+(defun eldoc-meta-net-disable ()
+  "Turn off `eldoc-meta-net'."
+  (interactive)
+  (remove-hook 'csharp-mode-hook #'eldoc-meta-net--turn-on)
+  (remove-hook 'csharp-tree-sitter-mode #'eldoc-meta-net--turn-on))
 
 (provide 'eldoc-meta-net)
 ;;; eldoc-meta-net.el ends here
