@@ -154,18 +154,20 @@ For example,
 This function also ignore generic type between < and >."
   (let ((start (point))
         (normal (save-excursion (forward-symbol -1) (point)))
-        (generic (save-excursion (search-backward ">" nil t)
-                                 (forward-char 1)
-                                 (forward-sexp -1)
-                                 (forward-symbol -1)
-                                 (point)))
+        (generic
+         (ignore-errors
+           (save-excursion (search-backward ">" nil t)
+                           (forward-char 1)
+                           (forward-sexp -1)
+                           (forward-symbol -1)
+                           (point))))
         result search-pt)
-    (when (<= generic (line-beginning-position))
-      (setq generic nil))
     ;; Make sure the result is number to avoid error
     (setq normal (or normal (point))
           generic (or generic (point))
           result (min normal generic))
+    (when (<= generic (line-beginning-position))
+      (setq generic (point)))
     (goto-char result)  ; here suppose to be the start of the function name
     ;; We check to see if there is comma right behind the symbol
     (save-excursion
@@ -241,7 +243,6 @@ We use this to eliminate not possible candidates."
 
 (defun eldoc-meta-net--grab-data (function-name)
   "Return data that match FUNCTION-NAME."
-  (unless meta-net-csproj-current (meta-net-read-project))  ; read it
   (eldoc-meta-net--grab-namespaces)        ; first grab the data from `meta-net'
 
   (let* ((xmls (eldoc-meta-net--all-xmls))  ; Get the list of xml files from current project
@@ -356,6 +357,7 @@ We use this to eliminate not possible candidates."
 
 (defun eldoc-meta-net--turn-on ()
   "Start the `eldoc-meta-net' worker."
+  (unless meta-net-csproj-current (meta-net-read-project))  ; read project
   (add-function :before-until (local 'eldoc-documentation-function) #'eldoc-meta-net-function)
   (eldoc-mode 1))
 
