@@ -339,20 +339,23 @@ We use this to eliminate not possible candidates."
           (insert name)
           (let ((params (ht-get info 'params)) (param-index (1- (length match-bounds)))
                 param param-name param-summary)
-            (dolist (bound (reverse match-bounds))  ; we replace from the back
-              (delete-region (car bound) (cdr bound))
-              (goto-char (car bound))
+            (dolist (bound (reverse match-bounds))     ; we replace from the back
+              (delete-region (car bound) (cdr bound))  ; deletion for replacement
+              (goto-char (car bound))                  ; navigate back to starting position
               (setq param (nth param-index params)
                     param-name (car param))
-              (when (= param-index arg-index)
-                (setq param-summary (cdr param)  ; later insert target param summary
+              (when (= param-index arg-index)    ; check if we need to highlight argument's name
+                (setq param-summary (cdr param)  ; record target's (param) summary later insertion
+                      ;; Highlight it!
                       param-name (propertize param-name 'face 'eldoc-highlight-function-argument)))
               ;; Make sure we don't add a space infront of (
-              (insert (if (= param-index 0) "" " ") param-name)
+              (insert (if (= param-index 0) "" " ") param-name)  ; insert replacement
               (setq param-index (1- param-index)))
-            (goto-char (point-max))
+            ;; Insert parameter's summary
             (when (and eldoc-meta-net-display-summary param-summary)
+              (goto-char (point-max))
               (insert "\n\n" param-summary)))
+          ;; Done, return it
           (buffer-string))))))
 
 (defun eldoc-meta-net--turn-on ()
