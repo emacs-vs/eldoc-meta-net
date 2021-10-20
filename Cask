@@ -1,3 +1,4 @@
+(source celpa)
 (source melpa)
 
 (package-file "eldoc-meta-net.el")
