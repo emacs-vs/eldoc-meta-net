@@ -9,7 +9,7 @@ TEST-FILES := $(shell ls test/eldoc-meta-net-*.el)
 
 .PHONY: clean checkdoc lint unix-build unix-compile	unix-test
 
-unix-ci: clean unix-build unix-compile unix-test
+unix-ci: clean unix-build unix-compile
 
 unix-build:
 	$(CASK) install
