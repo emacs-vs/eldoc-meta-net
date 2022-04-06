@@ -1,6 +1,7 @@
 (package "eldoc-meta-net"
          "0.1.0"
          "Eldoc support for meta-net")
+
 (package-file "eldoc-meta-net.el")
 
 (source "jcs-elpa")
