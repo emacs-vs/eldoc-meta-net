@@ -2,6 +2,9 @@
          "0.1.0"
          "Eldoc support for meta-net")
 
+(website-url "https://github.com/emacs-vs/eldoc-meta-net")
+(keywords "eldoc" "c#" "dotnet" "sdk")
+
 (package-file "eldoc-meta-net.el")
 
 (source "jcs-elpa")
