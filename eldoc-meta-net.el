@@ -7,7 +7,7 @@
 ;; URL: https://github.com/emacs-vs/eldoc-meta-net
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "26.1") (meta-net "1.1.0") (ht "2.3") (csharp-mode "1.0.2"))
-;; Keywords: eldoc c# dotnet sdk
+;; Keywords: convenience eldoc c# dotnet sdk
 
 ;; This file is NOT part of GNU Emacs.
 
