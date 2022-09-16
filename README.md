@@ -1,5 +1,4 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![CELPA](https://celpa.conao3.com/packages/eldoc-meta-net-badge.svg)](https://celpa.conao3.com/#/eldoc-meta-net)
 [![JCS-ELPA](https://raw.githubusercontent.com/jcs-emacs/badges/master/elpa/v/eldoc-meta-net.svg)](https://jcs-emacs.github.io/jcs-elpa/#/eldoc-meta-net)
 
 # eldoc-meta-net
