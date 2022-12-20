@@ -13,7 +13,7 @@
 ## :floppy_disk: Quickstart
 
 ```el
-(use-package company-meta-net
+(use-package eldoc-meta-net
   :ensure t
   :hook (csharp-mode . (lambda () (eldoc-meta-net-enable))))
 ```
