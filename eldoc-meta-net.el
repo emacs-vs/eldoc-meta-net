@@ -369,7 +369,8 @@ We use this to eliminate not possible candidates."
   "Turn on `eldoc-meta-net'."
   (interactive)
   (add-hook 'csharp-mode-hook #'eldoc-meta-net--turn-on)
-  (add-hook 'csharp-tree-sitter-mode #'eldoc-meta-net--turn-on))
+  (add-hook 'csharp-tree-sitter-mode #'eldoc-meta-net--turn-on)
+  (eldoc-meta-net--turn-on))
 
 ;;;###autoload
 (defun eldoc-meta-net-disable ()
