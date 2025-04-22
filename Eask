@@ -1,3 +1,5 @@
+;; -*- mode: eask; lexical-binding: t -*-
+
 (package "eldoc-meta-net"
          "0.1.0"
          "Eldoc support for meta-net")
